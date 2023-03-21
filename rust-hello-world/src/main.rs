@@ -1,4 +1,4 @@
-use std::{net::{TcpListener, TcpStream}, io::{Result, Read, BufRead}, str};
+use std::{net::{TcpListener, TcpStream}, io::{Result, Read}, str};
 
 fn main() -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:3000")?;
