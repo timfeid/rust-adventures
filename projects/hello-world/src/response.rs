@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::TcpStream, io::Write};
+use std::{collections::HashMap, io::Write, net::TcpStream};
 
 use chrono::Utc;
 
@@ -57,15 +57,17 @@ impl Response {
     }
 
     pub fn send(&mut self, mut stream: &TcpStream) -> std::result::Result<(), std::io::Error> {
-        self.headers.insert("Content-Length".to_owned(), self.body.len().to_string());
-        stream.write_all(&self.to_string().as_bytes())
+        self.headers
+            .insert("Content-Length".to_owned(), self.body.len().to_string());
+        stream.write_all(self.to_string().as_bytes())
     }
 }
 
 impl ToString for Response {
     fn to_string(&self) -> String {
         let response = format!("HTTP/1.1 {}", &get_response_code(&self.status_code));
-        let headers: Vec<String> = self.headers
+        let headers: Vec<String> = self
+            .headers
             .iter()
             .map(|(key, value)| format!("{}: {}", key, value))
             .collect();
