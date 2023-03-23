@@ -35,7 +35,7 @@ fn handle_client(mut stream: TcpStream) {
 
     let mut response = match request.get_path().as_str() {
         "/" => Response::ok(Some(
-            "<html><head></head><body>hello world</body></html>".to_owned(),
+            "<html><head></head><body>test</body></html>".to_owned(),
         )),
         _ => Response::not_found(Some(
             "<html><head></head><body>Not found</body></html>".to_owned(),
