@@ -8,20 +8,22 @@ use std::{
     net::{TcpListener, TcpStream},
 };
 
+#[derive(Debug)]
+struct HandleClientError {}
+
 fn main() -> Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:3000").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:3000")?;
 
     for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => handle_client(stream),
-            Err(e) => println!("{}", e),
-        }
+        if let Err(e) = handle_client(stream?) {
+            println!("Something went wrong {e}")
+        };
     }
 
     Ok(())
 }
 
-fn handle_client(mut stream: TcpStream) {
+fn handle_client(mut stream: TcpStream) -> Result<()> {
     let buffer = BufReader::new(&mut stream);
     let lines: Vec<String> = buffer
         .lines()
@@ -42,17 +44,8 @@ fn handle_client(mut stream: TcpStream) {
         )),
     };
 
-    match response.send(&stream) {
-        Ok(_) => {
-            println!("success!\n{}", response.to_string())
-        }
-        Err(e) => {
-            println!("oh no, {}", e)
-        }
-    }
+    response.send(&stream)?;
+    stream.shutdown(std::net::Shutdown::Both)?;
 
-    match stream.shutdown(std::net::Shutdown::Both) {
-        Ok(_) => println!("connection closed"),
-        Err(_) => println!("something went wrong trying to close the socket"),
-    }
+    Ok(())
 }
