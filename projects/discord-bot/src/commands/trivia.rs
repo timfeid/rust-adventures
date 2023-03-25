@@ -1,54 +1,83 @@
-use crate::poll::Poll;
-use reqwest::Error;
-use serde::Deserialize;
+use std::sync::{Arc, Mutex};
+
 use serenity::{
-    framework::standard::{macros::command, Args, CommandResult},
-    model::prelude::{Message, ReactionType},
+    model::prelude::{Channel, Message},
     prelude::Context,
 };
 
-#[derive(Deserialize)]
-struct ApiResponse {
-    results: Vec<TriviaQuestion>,
+use crate::poll::{Poll, PollBuilder, PollListener};
+
+#[derive(Clone)]
+pub struct TriviaPoll<T: TriviaPollHandler>
+where
+    T: std::clone::Clone,
+{
+    poll: Arc<Mutex<Poll>>,
+    handler: T,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct TriviaQuestion {
-    pub category: String,
-    pub question: String,
-    pub correct_answer: String,
-    pub incorrect_answers: Vec<String>,
+impl<T: TriviaPollHandler + std::clone::Clone + std::marker::Send + std::marker::Sync> PollListener
+    for TriviaPoll<T>
+{
+    fn on_poll_updated(&self, poll: &Poll) {
+        self.handler.on_poll_updated(poll);
+    }
 }
 
-pub async fn get_trivia_questions(amount: u32) -> Result<Vec<TriviaQuestion>, Error> {
-    let url = format!(
-        "https://opentdb.com/api.php?amount={}&type=multiple",
-        amount
-    );
-    let response: ApiResponse = reqwest::get(&url).await?.json().await?;
-    Ok(response.results)
+impl<
+        T: TriviaPollHandler
+            + std::clone::Clone
+            + std::marker::Sync
+            + std::marker::Sync
+            + std::marker::Send
+            + 'static,
+    > TriviaPoll<T>
+{
+    fn from_poll(poll: Poll, handler: T) -> Self {
+        let poll = Arc::new(Mutex::new(poll));
+        let trivia_poll = TriviaPoll {
+            poll: poll.clone(),
+            handler,
+        };
+
+        let listener = Arc::new(trivia_poll.clone());
+        poll.lock().unwrap().add_listener(listener);
+
+        trivia_poll
+    }
 }
 
-#[command]
-pub async fn trivia(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
-    if let Ok(questions) = get_trivia_questions(1).await {
-        for question in questions {
-            println!("{}; {}", question.category, question.question);
-            let mut answers = question.incorrect_answers;
-            answers.push(question.correct_answer.to_owned());
+pub trait TriviaPollHandler {
+    fn on_poll_updated(&self, poll: &Poll);
+}
 
-            // let mut poll = Poll::new(msg.channel_id);
-            // poll.set_question(question.question);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-            // for answer in &answers {
-            //     poll.add_answer(answer, *answer == question.correct_answer);
-            // }
+    #[derive(Clone)]
+    struct MockTriviaPollHandler;
 
-            // if (poll.start(ctx).await).is_none() {
-            //     println!("failed to send poll :(");
-            // }
+    impl TriviaPollHandler for MockTriviaPollHandler {
+        fn on_poll_updated(&self, poll: &Poll) {
+            println!("Mock: Poll updated: {:#?}", poll);
         }
     }
 
-    Ok(())
+    #[test]
+    fn it_does_shit() {
+        // ...
+        let mut poll = PollBuilder::new()
+            .question("hello world")
+            .add_answer("an answer")
+            .add_answer("an answer2")
+            .make();
+
+        let trivia_poll =
+            TriviaPoll::<MockTriviaPollHandler>::from_poll(poll, MockTriviaPollHandler);
+
+        trivia_poll.poll.lock().unwrap().add_answer("tim", '🇦');
+        trivia_poll.poll.lock().unwrap().add_answer("bob", '🇦');
+        trivia_poll.poll.lock().unwrap().add_answer("joe", '🇦');
+    }
 }
