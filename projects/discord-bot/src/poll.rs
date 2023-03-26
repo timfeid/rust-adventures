@@ -2,6 +2,8 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, rc::Rc};
 
+use serenity::async_trait;
+
 #[derive(Debug, Clone)]
 struct Answer {
     value: String,
@@ -9,6 +11,7 @@ struct Answer {
     total: i32,
 }
 
+#[async_trait]
 pub trait PollListener: Send + Sync {
     fn on_poll_updated(&self, poll: &Poll);
 }
@@ -65,7 +68,7 @@ impl Poll {
 
         for (char, answer) in &self.answers {
             string.push_str(&format!("{char}   {}", answer.value));
-            string.push_str(&format!("   ({} votes)", answer.total));
+            string.push_str(&format!("   ({} votes)\n\n", answer.total));
         }
 
         string
@@ -73,6 +76,10 @@ impl Poll {
 
     pub fn add_listener(&mut self, listener: Arc<dyn PollListener>) {
         self.listeners.push(listener);
+    }
+
+    pub fn get_answer_keys(&self) -> Vec<&char> {
+        self.answers.keys().collect()
     }
 
     fn notify_listeners(&self) {

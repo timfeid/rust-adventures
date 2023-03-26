@@ -6,31 +6,29 @@ use serenity::{
 use tokio::sync::mpsc;
 
 pub struct CompositeEventHandler {
-    // handlers: Vec<Box<dyn EventHandler + Send + Sync>>,
+    handlers: Vec<Box<dyn EventHandler + Send + Sync>>,
 }
 
 impl CompositeEventHandler {
-    // pub fn new(poll_sender: mpsc::Sender<PollMessage>) -> Self {
-    //     CompositeEventHandler {
-    //         handlers: vec![Box::new(PollEventHandler::new(poll_sender))],
-    //     }
-    // }
+    pub fn new() -> Self {
+        CompositeEventHandler { handlers: vec![] }
+    }
 }
 
-// #[async_trait]
-// impl EventHandler for CompositeEventHandler {
-//     async fn reaction_add(&self, ctx: Context, add_reaction: Reaction) {
-//         for handler in &self.handlers {
-//             handler
-//                 .reaction_add(ctx.clone(), add_reaction.clone())
-//                 .await;
-//         }
-//     }
+#[async_trait]
+impl EventHandler for CompositeEventHandler {
+    async fn reaction_add(&self, ctx: Context, add_reaction: Reaction) {
+        for handler in &self.handlers {
+            handler
+                .reaction_add(ctx.clone(), add_reaction.clone())
+                .await;
+        }
+    }
 
-//     async fn ready(&self, ctx: Context, ready: Ready) {
-//         for handler in &self.handlers {
-//             println!("found a handler");
-//             handler.ready(ctx.clone(), ready.clone()).await;
-//         }
-//     }
-// }
+    async fn ready(&self, ctx: Context, ready: Ready) {
+        for handler in &self.handlers {
+            println!("found a handler");
+            handler.ready(ctx.clone(), ready.clone()).await;
+        }
+    }
+}
