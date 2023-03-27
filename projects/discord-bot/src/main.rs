@@ -5,20 +5,19 @@ mod trivia;
 
 use std::sync::{Arc, Mutex};
 
+use crate::commands::poll::POLL_COMMAND;
 use commands::trivia::TRIVIA_COMMAND;
 
 use handler::{CompositeEventHandler, CompositeEventHandlerKey, WrappedCompositeEventHandler};
-// use poll::{poll_manager, PollSenderKey, PollsKey, PollsMap};
 use serenity::{
     async_trait,
     framework::standard::{macros::group, StandardFramework},
     model::gateway::Ready,
     prelude::*,
 };
-use tokio::sync::mpsc;
 
 #[group]
-#[commands(trivia)]
+#[commands(trivia, poll)]
 struct General;
 
 struct Handler;

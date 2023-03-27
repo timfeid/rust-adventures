@@ -2,10 +2,9 @@ use std::sync::{Arc, Mutex};
 
 use serenity::{
     async_trait,
-    model::prelude::{Message, Reaction, Ready},
+    model::prelude::{Reaction, Ready},
     prelude::{Context, EventHandler, TypeMapKey},
 };
-use tokio::sync::mpsc;
 
 pub struct CompositeEventHandler {
     handlers: Vec<Arc<dyn EventHandler + Send + Sync>>,

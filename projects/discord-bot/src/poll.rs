@@ -1,7 +1,7 @@
 use itertools::Itertools;
+use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, Mutex};
-use std::{collections::HashMap, rc::Rc};
+use std::sync::Arc;
 
 use serenity::async_trait;
 

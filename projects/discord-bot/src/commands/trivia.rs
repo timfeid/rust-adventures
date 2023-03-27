@@ -1,31 +1,20 @@
 use crate::handler::CompositeEventHandlerKey;
 use crate::poll::{Poll, PollBuilder};
-use crate::trivia::{self, TriviaPoll, TriviaPollHandler, TriviaQuestion};
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
+use crate::trivia::{TriviaPoll, TriviaPollHandler, TriviaQuestion};
 use html_escape::decode_html_entities;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use reqwest::Error;
-use serde::Deserialize;
 use serenity::async_trait;
-use serenity::framework::standard::CommandError;
 use serenity::framework::standard::{macros::command, CommandResult};
-use serenity::model::prelude::{Channel, Reaction, UserId};
+use serenity::model::prelude::{Reaction, UserId};
 use serenity::prelude::EventHandler;
 use serenity::{
     framework::standard::Args,
     model::prelude::{Message, ReactionType},
     prelude::Context,
 };
-use std::future::IntoFuture;
-use std::rc::Rc;
-use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex, MutexGuard};
-use std::thread;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tokio::runtime::Runtime;
-use tokio::task::block_in_place;
 use tokio::time::sleep;
 
 #[derive(Clone)]
@@ -35,7 +24,7 @@ pub struct DiscordPollHandler {
 }
 
 impl DiscordPollHandler {
-    fn new(message: Message, context: Context, poll: &Poll) -> Self {
+    pub fn new(message: Message, context: Context, poll: &Poll) -> Self {
         let message_clone = message.clone();
         let context_clone = context.clone();
         let handler = Arc::new(DiscordPollHandler { message, context });
