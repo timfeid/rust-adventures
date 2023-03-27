@@ -14,13 +14,22 @@ struct Answer {
 #[async_trait]
 pub trait PollListener: Send + Sync {
     fn on_poll_updated(&self, poll: &Poll);
+    fn on_poll_finished(&self, poll: &Poll);
 }
 
+#[derive(Debug)]
+enum PollListenerEvents {
+    Updated,
+    Finished,
+}
+
+#[derive(Clone)]
 pub struct Poll {
     question: String,
     answers: HashMap<char, Answer>,
-    answerers: HashMap<String, char>,
+    pub answerers: HashMap<String, char>,
     listeners: Vec<Arc<dyn PollListener>>,
+    finished: bool,
 }
 
 impl fmt::Debug for Poll {
@@ -58,7 +67,7 @@ impl Poll {
             answer.total += 1;
         }
 
-        self.notify_listeners();
+        self.notify_listeners(PollListenerEvents::Updated);
 
         self
     }
@@ -67,11 +76,32 @@ impl Poll {
         let mut string = format!("{}\n\n", self.question);
 
         for (char, answer) in &self.answers {
-            string.push_str(&format!("{char}   {}", answer.value));
-            string.push_str(&format!("   ({} votes)\n\n", answer.total));
+            string.push_str(&format!("```\n{char}   {}", answer.value));
+            string.push_str(&format!("\n\n({} votes)```", answer.total));
         }
 
+        if self.finished {
+            // todo: figure out how to do just a "poll" ... need to abstract this bitch
+            string.push_str(&format!(
+                "\nTimes up! The answer was {}",
+                match self.answers.values().find(|p| p.is_correct) {
+                    Some(v) => v.value.clone(),
+                    None => String::from("the one with the most votes. ... .. . "),
+                }
+            ));
+        } else {
+            string.push_str("\n\n vote below");
+        }
+
+        println!("{:#?}", self);
+
         string
+    }
+
+    pub fn finished(&mut self) {
+        self.finished = true;
+        self.notify_listeners(PollListenerEvents::Finished);
+        println!("we did it");
     }
 
     pub fn add_listener(&mut self, listener: Arc<dyn PollListener>) {
@@ -82,9 +112,13 @@ impl Poll {
         self.answers.keys().collect()
     }
 
-    fn notify_listeners(&self) {
+    fn notify_listeners(&self, event: PollListenerEvents) {
+        println!("notified listeners of a {:#?} event", event);
         for listener in &self.listeners {
-            listener.as_ref().on_poll_updated(self);
+            match event {
+                PollListenerEvents::Updated => listener.as_ref().on_poll_updated(self),
+                PollListenerEvents::Finished => listener.as_ref().on_poll_finished(self),
+            }
         }
     }
 }
@@ -101,11 +135,10 @@ impl PollBuilder {
     }
 
     fn index_to_emoji(index: usize) -> char {
-        let emoji_base = 0x1F1E6; // Regional Indicator Symbol A
+        let emoji_base = 0x1F1E6; // regional indicator symbol a
         let emoji_code = emoji_base + index;
-        let emoji = char::from_u32(emoji_code as u32).unwrap();
 
-        emoji
+        char::from_u32(emoji_code as u32).unwrap()
     }
 
     pub fn question(&mut self, question: &str) -> &mut Self {
@@ -143,20 +176,21 @@ impl PollBuilder {
             answers: self.answers.to_owned(),
             answerers: Default::default(),
             listeners: Default::default(),
+            finished: false,
         }
     }
 }
 
 #[test]
 fn it_makes_a_poll() {
-    let mut pollBuilder = PollBuilder::new();
-    pollBuilder
+    let mut poll_builder = PollBuilder::new();
+    poll_builder
         .question("What are you doing?")
         .add_trivia_answer("I have no idea", true)
         .add_trivia_answer("I have some idea", false)
         .add_trivia_answer("I have every idea", false);
 
-    let mut poll = pollBuilder.make();
+    let mut poll = poll_builder.make();
     println!("{:#?}", poll);
 
     poll.add_answer("tim", '🇦');

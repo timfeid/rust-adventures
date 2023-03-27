@@ -3,11 +3,11 @@ mod handler;
 mod poll;
 mod trivia;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use commands::trivia::TRIVIA_COMMAND;
 
-use handler::CompositeEventHandler;
+use handler::{CompositeEventHandler, CompositeEventHandlerKey, WrappedCompositeEventHandler};
 // use poll::{poll_manager, PollSenderKey, PollsKey, PollsMap};
 use serenity::{
     async_trait,
@@ -15,7 +15,7 @@ use serenity::{
     model::gateway::Ready,
     prelude::*,
 };
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc;
 
 #[group]
 #[commands(trivia)]
@@ -33,10 +33,11 @@ impl EventHandler for Handler {
 #[tokio::main]
 async fn main() {
     let token = std::env::var("DISCORD_BOT_TOKEN").expect("DISCORD_BOT_TOKEN must be set.");
-    // let (poll_sender, poll_receiver) = mpsc::channel(100);
-    // tokio::spawn(poll_manager(poll_receiver));
-    // let handler = CompositeEventHandler::new(poll_sender.clone());
-    let handler = CompositeEventHandler::new();
+    let handler = Arc::new(Mutex::new(CompositeEventHandler::new()));
+    let wrapped_handler = WrappedCompositeEventHandler {
+        inner: handler.clone(),
+    };
+
     let intents = GatewayIntents::MESSAGE_CONTENT
         | GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::GUILD_MEMBERS
@@ -46,12 +47,15 @@ async fn main() {
         .group(&GENERAL_GROUP);
 
     let mut client = Client::builder(&token, intents)
-        .event_handler(handler)
+        .event_handler(wrapped_handler)
         .framework(framework)
-        // .type_map_insert::<PollsKey>(Arc::new(Mutex::new(PollsMap::new())))
-        // .type_map_insert::<PollSenderKey>(poll_sender)
         .await
         .expect("Unable to create the Discord client");
+
+    {
+        let mut data = client.data.write().await;
+        data.insert::<CompositeEventHandlerKey>(handler);
+    }
 
     // poll_manager_handle.await.unwrap();
 

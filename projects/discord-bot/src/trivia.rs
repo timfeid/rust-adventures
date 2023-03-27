@@ -42,14 +42,18 @@ pub struct TriviaPoll<T: TriviaPollHandler>
 where
     T: std::clone::Clone,
 {
-    poll: Arc<Mutex<Poll>>,
-    handler: T,
+    pub poll: Arc<Mutex<Poll>>,
+    pub handler: T,
 }
 
 impl<T: TriviaPollHandler + std::clone::Clone + std::marker::Send + std::marker::Sync> PollListener
     for TriviaPoll<T>
 {
     fn on_poll_updated(&self, poll: &Poll) {
+        self.handler.on_poll_updated(poll);
+    }
+
+    fn on_poll_finished(&self, poll: &Poll) {
         self.handler.on_poll_updated(poll);
     }
 }
@@ -63,8 +67,7 @@ impl<
             + 'static,
     > TriviaPoll<T>
 {
-    pub fn from_poll(poll: Poll, handler: T) -> Self {
-        let poll = Arc::new(Mutex::new(poll));
+    pub fn from(poll: Arc<Mutex<Poll>>, handler: T) -> Self {
         let trivia_poll = TriviaPoll {
             poll: poll.clone(),
             handler,
@@ -77,19 +80,8 @@ impl<
     }
 }
 
-#[async_trait]
 pub trait TriviaPollHandler {
-    fn on_poll_updated(&self, poll: &Poll) {
-        // we don't really need to do shit, gotta be honest i prob should just remove
-        // this from the trait, i will prob never use this for anything else but hey
-    }
-
-    async fn on_poll_updated_async(&self, poll: &Poll)
-    where
-        Self: std::marker::Sync,
-    {
-        async move { self.on_poll_updated(poll) }.await;
-    }
+    fn on_poll_updated(&self, poll: &Poll);
 }
 
 #[cfg(test)]
@@ -110,7 +102,6 @@ mod tests {
         }
     }
 
-    #[async_trait]
     impl TriviaPollHandler for MockTriviaPollHandler {
         fn on_poll_updated(&self, poll: &Poll) {
             println!("Mock: Poll updated: {:#?}", poll);
@@ -120,14 +111,16 @@ mod tests {
 
     #[test]
     fn it_does_shit() {
-        let poll = PollBuilder::new()
-            .question("hello world")
-            .add_answer("an answer")
-            .add_answer("an answer2")
-            .make();
+        let poll = Arc::new(Mutex::new(
+            PollBuilder::new()
+                .question("hello world")
+                .add_answer("an answer")
+                .add_answer("an answer2")
+                .make(),
+        ));
 
         let handler = MockTriviaPollHandler::new();
-        let trivia_poll = TriviaPoll::from_poll(poll, handler.clone());
+        let trivia_poll = TriviaPoll::from(poll, handler.clone());
 
         trivia_poll
             .poll
@@ -138,5 +131,8 @@ mod tests {
             .add_answer("joe", '🇦');
 
         assert_eq!(*handler.updated_count.lock().unwrap(), 3);
+
+        trivia_poll.poll.lock().unwrap().finished();
+        assert_eq!(*handler.updated_count.lock().unwrap(), 4);
     }
 }

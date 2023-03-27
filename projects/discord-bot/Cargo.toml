@@ -11,3 +11,6 @@ serde = { version = "1.0.158", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 serenity = "0.11.5"
 futures = "0.3.27"
+crossbeam-channel = "0.5.7"
+html-escape = "0.2.13"
+rand = "0.8.5"

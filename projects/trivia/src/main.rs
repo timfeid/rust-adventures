@@ -1,5 +1,3 @@
-mod commands;
-
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
 use reqwest::Error;
 use serde::Deserialize;
