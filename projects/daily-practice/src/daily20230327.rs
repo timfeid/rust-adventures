@@ -1,22 +1,5 @@
-fn binary_search(haysack: &[i32], needle: &i32) -> bool {
-    let mut left = 0;
-    let mut right = haysack.len();
-
-    while left < right {
-        let middle = left + (right - left) / 2;
-
-        match haysack[middle].cmp(needle) {
-            std::cmp::Ordering::Equal => return true,
-            std::cmp::Ordering::Less => left = middle + 1,
-            std::cmp::Ordering::Greater => right = middle,
-        };
-    }
-
-    false
-}
-
 fn bubble_sort(arr: &mut [i32]) -> &mut [i32] {
-    for i in 0..arr.len() {
+    for i in 0..arr.len() - 1 {
         for j in 0..arr.len() - i - 1 {
             if arr[j] > arr[j + 1] {
                 arr.swap(j, j + 1);
@@ -27,17 +10,26 @@ fn bubble_sort(arr: &mut [i32]) -> &mut [i32] {
     arr
 }
 
-#[test]
-fn it_works() {
-    assert!(binary_search(
-        &[1, 2, 4, 6, 8, 10, 22, 40, 50, 56, 100, 102, 200, 300],
-        &22,
-    ));
-    assert!(!binary_search(
-        &[1, 2, 4, 6, 8, 10, 22, 40, 50, 56, 100, 102, 200, 300],
-        &3
-    ));
+fn binary_search(haystack: &[i32], needle: &i32) -> bool {
+    let mut left = 0;
+    let mut right = haystack.len();
 
+    while left < right {
+        let middle = left + (right - left) / 2;
+        match needle.cmp(&haystack[middle]) {
+            std::cmp::Ordering::Equal => return true,
+            // if they needle < currentVal,
+            std::cmp::Ordering::Less => right = middle,
+            // otherwise:
+            std::cmp::Ordering::Greater => left = middle + 1,
+        }
+    }
+
+    false
+}
+
+#[test]
+fn daily_again() {
     let mut arr = [
         873, 669, 298, 285, 318, 717, 152, 5, 435, 789, 548, 531, 703, 139, 643, 179, 784, 398,
         376, 12, 561, 333, 536, 508, 753, 587, 82, 763, 620, 716, 858, 634, 702, 137, 631, 847,
@@ -58,4 +50,13 @@ fn it_works() {
             860, 864, 871, 873, 874, 881, 883, 905, 906, 913, 927, 933, 945, 949, 952, 995,
         ]
     );
+
+    assert!(binary_search(
+        &[1, 2, 4, 6, 8, 10, 22, 40, 50, 56, 100, 102, 200, 300],
+        &22,
+    ));
+    assert!(!binary_search(
+        &[1, 2, 4, 6, 8, 10, 22, 40, 50, 56, 100, 102, 200, 300],
+        &3
+    ));
 }
