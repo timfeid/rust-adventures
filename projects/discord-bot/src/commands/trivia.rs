@@ -23,8 +23,10 @@ use std::rc::Rc;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
+use std::time::Duration;
 use tokio::runtime::Runtime;
 use tokio::task::block_in_place;
+use tokio::time::sleep;
 
 #[derive(Clone)]
 pub struct DiscordPollHandler {
@@ -102,19 +104,12 @@ impl DiscordPollHandler {
     }
 
     pub async fn add_answers_as_reactions(&self, poll: &Poll) {
-        let mut tasks = FuturesUnordered::new();
-
         for emoji in poll.get_answer_keys() {
             let reaction = ReactionType::Unicode(emoji.to_string());
 
-            tasks.push(async move { self.message.react(&self.context.http, reaction).await });
-        }
-
-        while let Some(result) = tasks.next().await {
-            match result {
-                Ok(_) => println!("Reacted successfully"),
-                Err(e) => eprintln!("Error reacting: {:?}", e),
-            }
+            self.message.react(&self.context.http, reaction).await.ok();
+            // this prob is bad idea, no ?
+            sleep(Duration::from_millis(100)).await;
         }
     }
 }

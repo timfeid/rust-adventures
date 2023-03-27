@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, rc::Rc};
@@ -75,9 +76,14 @@ impl Poll {
     pub fn render(&self) -> String {
         let mut string = format!("{}\n\n", self.question);
 
-        for (char, answer) in &self.answers {
-            string.push_str(&format!("```\n{char}   {}", answer.value));
-            string.push_str(&format!("\n\n({} votes)```", answer.total));
+        println!("{:#?}", self.answers);
+
+        let answers = self.answers.clone();
+        for char in answers.keys().sorted() {
+            if let Some(answer) = self.answers.get(char) {
+                string.push_str(&format!("```\n{char}   {}", answer.value));
+                string.push_str(&format!("\n\n({} votes)```", answer.total));
+            }
         }
 
         if self.finished {
@@ -109,7 +115,7 @@ impl Poll {
     }
 
     pub fn get_answer_keys(&self) -> Vec<&char> {
-        self.answers.keys().collect()
+        self.answers.keys().sorted().collect()
     }
 
     fn notify_listeners(&self, event: PollListenerEvents) {
